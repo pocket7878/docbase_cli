@@ -8,13 +8,15 @@ use rustc_serialize::json;
 use models::team;
 use models::group;
 use models::post_search_result;
+use models::post;
+use models::tag;
 
 header! { (XDocBaseToken, "X-DocbaseToken") => [String] }
 
 pub struct Client {
     pub api_key: String
 }
-
+    
 impl Client {
 
     pub fn teams(&self) -> Vec<team::Team> {
@@ -40,7 +42,7 @@ impl Client {
         return groups;
     }
 
-    pub fn get_posts(&self, domain: &str) -> post_search_result::PostSearchResult {
+    pub fn posts(&self, domain: &str) -> post_search_result::PostSearchResult {
         let client = client::Client::new();
         let mut headers = Headers::new();
         headers.set(XDocBaseToken(self.api_key.to_owned()));
@@ -52,4 +54,27 @@ impl Client {
         return searchResult;
     }
 
+    pub fn post_detail(&self, domain: &str, post_id: u32) -> post::Post {
+        let client = client::Client::new();
+        let mut headers = Headers::new();
+        headers.set(XDocBaseToken(self.api_key.to_owned()));
+        let endpoint_url = format!("https://api.docbase.io/teams/{}/posts/{}", domain, post_id);
+        let mut res = client.get(&endpoint_url).headers(headers).send().unwrap();
+        let mut buffer = String::new();
+        res.read_to_string(&mut buffer).unwrap();
+        let post: post::Post = json::decode(&buffer).unwrap();
+        return post;
+    }
+
+    pub fn tags(&self, domain: &str) -> Vec<tag::Tag> {
+        let client = client::Client::new();
+        let mut headers = Headers::new();
+        headers.set(XDocBaseToken(self.api_key.to_owned()));
+        let endpoint_url = format!("https://api.docbase.io/teams/{}/tags", domain);
+        let mut res = client.get(&endpoint_url).headers(headers).send().unwrap();
+        let mut buffer = String::new();
+        res.read_to_string(&mut buffer).unwrap();
+        let tags: Vec<tag::Tag> = json::decode(&buffer).unwrap();
+        return tags;
+    }
 }
