@@ -57,7 +57,7 @@ impl Client {
         let client = client::Client::new();
         let mut headers = Headers::new();
         headers.set(XDocBaseToken(self.api_key.to_owned()));
-        let endpoint_url = format!("https://api.docbase.io/teams/{}/posts?q=group:{}",
+        let endpoint_url = format!("https://api.docbase.io/teams/{}/posts?q=group:\"{}\"",
                                    domain,
                                    group);
         let mut res = client.get(&endpoint_url).headers(headers).send().unwrap();
