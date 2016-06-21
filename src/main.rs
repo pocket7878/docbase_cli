@@ -76,9 +76,13 @@ fn browse_group(client: Client, team: &Team, group: &Group) {
         for (i, post) in searchResult.posts.iter().enumerate() {
             println!("{}: {}", i, post.title);
         }
-        println!("{}: Search Posts", searchResult.posts.len());
-        let idx = read_number("> ", 0, searchResult.posts.len() + 1);
+        println!("");
+        println!("{}: Change group", searchResult.posts.len());
+        println!("{}: Search Posts", searchResult.posts.len() + 1);
+        let idx = read_number("> ", 0, searchResult.posts.len() + 2);
         if idx == searchResult.posts.len() {
+            browse_team(client, team);
+        } else if idx == (searchResult.posts.len() + 1) {
             search_group_posts(client, team, group);
         } else {
             show_post(&searchResult.posts[idx]);
@@ -96,11 +100,31 @@ fn search_group_posts(client: Client, team: &Team, group: &Group) {
 
     let trimmed = input_text.trim();
     let searchResult: PostSearchResult = client.team(team.name.to_owned()).group(group.name.to_owned()).search(trimmed);
-    for (i, post) in searchResult.posts.iter().enumerate() {
-        println!("{}: {}", i, post.title);
+    if searchResult.posts.len() < 1 {
+        println!("No post found");
+        println!("0: Quit Search");
+        println!("1: Change word");
+        let idx = read_number("> ", 0, 2);
+        match idx {
+            0 => browse_group(client, team, group),
+            1 => search_group_posts(client, team, group),
+            _ => panic!("Illigal"),
+        }
+    } else {
+        for (i, post) in searchResult.posts.iter().enumerate() {
+            println!("{}: {}", i, post.title);
+        }
+        println!("{}: Quit Search", searchResult.posts.len());
+        println!("{}: Change word", searchResult.posts.len() + 1);
+        let idx = read_number("> ", 0, searchResult.posts.len() + 2);
+        if idx == searchResult.posts.len() {
+            browse_group(client, team, group);
+        } else if idx == searchResult.posts.len() + 1{
+            search_group_posts(client, team, group);
+        } else {
+            show_post(&searchResult.posts[idx]);
+        }
     }
-    let idx = read_number("> ", 0, searchResult.posts.len());
-    show_post(&searchResult.posts[idx]);
 }
 
 
@@ -114,9 +138,13 @@ fn browse_team(client: Client, team: &Team) {
         for (i, group) in groups.iter().enumerate() {
             println!("{}: {}", i, group.name);
         }
-        println!("{}: Search Posts", groups.len());
-        let idx = read_number("> ", 0, groups.len() + 1);
+        println!("");
+        println!("{}: Change team", groups.len());
+        println!("{}: Search Posts", groups.len() + 1);
+        let idx = read_number("> ", 0, groups.len() + 2);
         if idx == groups.len() {
+            browse_top(client);
+        } else if idx == (groups.len() + 1) {
             search_team_posts(client, team);
         } else {
             browse_group(client, team, &groups[idx]);
@@ -161,13 +189,7 @@ fn search_team_posts(client: Client, team: &Team) {
     }
 }
 
-fn main() {
-    let key = "DOCBASE_TOKEN";
-    let api_token = match env::var(key) {
-        Ok(v) => v,
-        Err(e) => panic!("environment variable `DOCBASE_TOKEN` not found"),
-    };
-    let client = Client { api_key: api_token.to_owned() };
+fn browse_top(client: Client) {
     let teams: Vec<Team> = client.teams();
     if (teams.len() < 1) {
         println!("No team found");
@@ -180,4 +202,14 @@ fn main() {
         let idx = read_number("> ", 0, teams.len());
         browse_team(client, &teams[idx]);
     }
+}
+
+fn main() {
+    let key = "DOCBASE_TOKEN";
+    let api_token = match env::var(key) {
+        Ok(v) => v,
+        Err(e) => panic!("environment variable `DOCBASE_TOKEN` not found"),
+    };
+    let client = Client { api_key: api_token.to_owned() };
+    browse_top(client);
 }
