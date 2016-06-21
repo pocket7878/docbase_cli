@@ -41,7 +41,7 @@ fn show_post(post: &Post) {
 }
 
 fn browse_group(client: Client, team: &Team, group: &Group) {
-    let searchResult: PostSearchResult = client.group_posts(&team.name, &group.name);
+    let searchResult: PostSearchResult = client.team(team.name.to_owned()).group(group.name.to_owned()).send();
     if searchResult.posts.len() < 1 {
         println!("No post found");
     } else if (searchResult.posts.len() == 1) {
@@ -81,7 +81,7 @@ fn read_number(prompt: &str, min: usize, max: usize) -> usize {
 }
 
 fn browse_team(client: Client, team: &Team) {
-    let groups: Vec<Group> = client.groups(&team.name);
+    let groups: Vec<Group> = client.team(team.name.to_owned()).groups();
     if (groups.len() < 1) {
         println!("No group found.");
     } else if (groups.len() == 1) {
