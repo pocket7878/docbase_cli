@@ -19,7 +19,7 @@ fn show_post(post: &Post) {
     match file.write_all(post.body.as_bytes()) {
         Err(why) => {
             panic!("couldn't write to: {}", why);
-        }
+        },
         Ok(_) => {
             match tmpfile.path().to_str() {
                 Some(pth) => {
@@ -31,7 +31,7 @@ fn show_post(post: &Post) {
                     if !status.success() {
                         panic!("View failed!");
                     }
-                }
+                },
                 None => {
                     panic!("Failed to get temporary file path.");
                 }
@@ -44,7 +44,7 @@ fn browse_group(client: Client, team: &Team, group: &Group) {
     let searchResult: PostSearchResult = client.group_posts(&team.name, &group.name);
     if searchResult.posts.len() < 1 {
         println!("No post found");
-    } else if (searchResult.posts.len() == 1) {
+    } else if(searchResult.posts.len() == 1) {
         show_post(&searchResult.posts.first().unwrap());
     } else {
         for (i, post) in searchResult.posts.iter().enumerate() {
@@ -72,7 +72,7 @@ fn read_number(prompt: &str, min: usize, max: usize) -> usize {
                 println!("Please input number between {} ~ {}", min, max);
                 return read_number(prompt, min, max);
             }
-        }
+        },
         Err(..) => {
             println!("Please input number between {} ~ {}", min, max);
             return read_number(prompt, min, max);
@@ -84,10 +84,10 @@ fn browse_team(client: Client, team: &Team) {
     let groups: Vec<Group> = client.groups(&team.name);
     if (groups.len() < 1) {
         println!("No group found.");
-    } else if (groups.len() == 1) {
+    } else if(groups.len() == 1) {
         browse_group(client, team, groups.first().unwrap());
     } else {
-        for (i, group) in groups.iter().enumerate() {
+        for (i,group) in groups.iter().enumerate() {
             println!("{}: {}", i, group.name);
         }
         let idx = read_number("> ", 0, groups.len());
@@ -99,13 +99,13 @@ fn main() {
     let key = "DOCBASE_TOKEN";
     let api_token = match env::var(key) {
         Ok(v) => v,
-        Err(e) => panic!("environment variable `DOCBASE_TOKEN` not found"),
+        Err(e) => panic!("environment variable `DOCBASE_TOKEN` not found")
     };
     let client = Client { api_key: api_token.to_owned() };
     let teams: Vec<Team> = client.teams();
     if (teams.len() < 1) {
         println!("No team found");
-    } else if (teams.len() == 1) {
+    } else if(teams.len() == 1) {
         browse_team(client, teams.first().unwrap());
     } else {
         for (i, team) in teams.iter().enumerate() {

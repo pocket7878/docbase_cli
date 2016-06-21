@@ -4,5 +4,5 @@ extern crate rustc_serialize;
 pub struct User {
     pub id: u32,
     pub name: String,
-    pub profile_image_url: String
+    pub profile_image_url: String,
 }

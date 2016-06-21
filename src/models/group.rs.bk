@@ -1,6 +1,7 @@
 extern crate rustc_serialize;
 
 #[derive(RustcDecodable, RustcEncodable)]
-pub struct Tag {
-    pub name: String,
+pub struct Group {
+    pub id: u32,
+    pub name: String
 }
