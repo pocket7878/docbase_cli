@@ -42,11 +42,17 @@ fn show_post(post: &Post) {
 
 fn browse_group(client: Client, team: &Team, group: &Group) {
     let searchResult: PostSearchResult = client.group_posts(&team.name, &group.name);
-    for (i, post) in searchResult.posts.iter().enumerate() {
-        println!("{}: {}", i, post.title);
+    if searchResult.posts.len() < 1 {
+        println!("No post found");
+    } else if(searchResult.posts.len() == 1) {
+        show_post(&searchResult.posts.first().unwrap());
+    } else {
+        for (i, post) in searchResult.posts.iter().enumerate() {
+            println!("{}: {}", i, post.title);
+        }
+        let idx = read_number("> ", 0, searchResult.posts.len());
+        show_post(&searchResult.posts[idx]);
     }
-    let idx = read_number("> ", 0, searchResult.posts.len() - 1);
-    show_post(&searchResult.posts[idx]);
 }
 
 fn read_number(prompt: &str, min: usize, max: usize) -> usize {
@@ -60,7 +66,7 @@ fn read_number(prompt: &str, min: usize, max: usize) -> usize {
     let trimmed = input_text.trim();
     match trimmed.parse::<usize>() {
         Ok(i) => {
-            if min <= i && i <= max {
+            if min <= i && i < max {
                 return i;
             } else {
                 println!("Please input number between {} ~ {}", min, max);
@@ -84,7 +90,7 @@ fn browse_team(client: Client, team: &Team) {
         for (i,group) in groups.iter().enumerate() {
             println!("{}: {}", i, group.name);
         }
-        let idx = read_number("> ", 0, groups.len() - 1);
+        let idx = read_number("> ", 0, groups.len());
         browse_group(client, team, &groups[idx]);
     }
 }
@@ -105,7 +111,7 @@ fn main() {
         for (i, team) in teams.iter().enumerate() {
             println!("{}: {}", i, team.name);
         }
-        let idx = read_number("> ", 0, teams.len() - 1);
+        let idx = read_number("> ", 0, teams.len());
         browse_team(client, &teams[idx]);
     }
 }
