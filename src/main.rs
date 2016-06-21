@@ -41,7 +41,8 @@ fn show_post(post: &Post) {
 }
 
 fn browse_group(client: Client, team: &Team, group: &Group) {
-    let searchResult: PostSearchResult = client.team(team.name.to_owned()).group(group.name.to_owned()).send();
+    let searchResult: PostSearchResult =
+        client.team(team.name.to_owned()).group(group.name.to_owned()).send();
     if searchResult.posts.len() < 1 {
         println!("No post found");
     } else if (searchResult.posts.len() == 1) {

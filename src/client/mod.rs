@@ -21,7 +21,6 @@ pub struct Client {
 }
 
 impl Client {
-
     pub fn teams(&self) -> Vec<team::Team> {
         let client = client::Client::new();
         let mut headers = Headers::new();
@@ -48,5 +47,4 @@ impl Client {
     pub fn team(&self, team: String) -> TeamRequestBuilder {
         return TeamRequestBuilder::new(self.api_key.to_owned(), team);
     }
-
 }
