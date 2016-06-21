@@ -134,11 +134,31 @@ fn search_team_posts(client: Client, team: &Team) {
 
     let trimmed = input_text.trim();
     let searchResult: PostSearchResult = client.team(team.name.to_owned()).search(trimmed);
-    for (i, post) in searchResult.posts.iter().enumerate() {
-        println!("{}: {}", i, post.title);
+    if searchResult.posts.len() < 1 {
+        println!("No post found");
+        println!("0: Quit Search");
+        println!("1: Change word");
+        let idx = read_number("> ", 0, 2);
+        match idx {
+            0 => browse_team(client, team),
+            1 => search_team_posts(client, team),
+            _ => panic!("Illigal"),
+        }
+    } else {
+        for (i, post) in searchResult.posts.iter().enumerate() {
+            println!("{}: {}", i, post.title);
+        }
+        println!("{}: Quit Search", searchResult.posts.len());
+        println!("{}: Change word", searchResult.posts.len() + 1);
+        let idx = read_number("> ", 0, searchResult.posts.len() + 2);
+        if idx == searchResult.posts.len() {
+            browse_team(client, team);
+        } else if idx == searchResult.posts.len() + 1{
+            search_team_posts(client, team);
+        } else {
+            show_post(&searchResult.posts[idx]);
+        }
     }
-    let idx = read_number("> ", 0, searchResult.posts.len());
-    show_post(&searchResult.posts[idx]);
 }
 
 fn main() {
