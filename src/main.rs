@@ -13,6 +13,31 @@ use std::process::Command;
 use std::fs::File;
 use std::fs::OpenOptions;
 
+fn read_number(prompt: &str, min: usize, max: usize) -> usize {
+    print!("{}", prompt);
+    io::stdout().flush().ok().expect("Could not flush stdout");
+    let mut input_text = String::new();
+    io::stdin()
+        .read_line(&mut input_text)
+        .expect("failed to read from stdin");
+
+    let trimmed = input_text.trim();
+    match trimmed.parse::<usize>() {
+        Ok(i) => {
+            if min <= i && i < max {
+                return i;
+            } else {
+                println!("Please input number between {} ~ {}", min, max);
+                return read_number(prompt, min, max);
+            }
+        }
+        Err(..) => {
+            println!("Please input number between {} ~ {}", min, max);
+            return read_number(prompt, min, max);
+        }
+    }
+}
+
 fn show_post(post: &Post) {
     let tmpfile: tempfile::NamedTempFile = tempfile::NamedTempFile::new().unwrap();
     let mut file: File = OpenOptions::new().write(true).open(tmpfile.path()).unwrap();
@@ -51,13 +76,18 @@ fn browse_group(client: Client, team: &Team, group: &Group) {
         for (i, post) in searchResult.posts.iter().enumerate() {
             println!("{}: {}", i, post.title);
         }
-        let idx = read_number("> ", 0, searchResult.posts.len());
-        show_post(&searchResult.posts[idx]);
+        println!("{}: Search Posts", searchResult.posts.len());
+        let idx = read_number("> ", 0, searchResult.posts.len() + 1);
+        if idx == searchResult.posts.len() {
+            search_group_posts(client, team, group);
+        } else {
+            show_post(&searchResult.posts[idx]);
+        }
     }
 }
 
-fn read_number(prompt: &str, min: usize, max: usize) -> usize {
-    print!("{}", prompt);
+fn search_group_posts(client: Client, team: &Team, group: &Group) {
+    print!("q> ");
     io::stdout().flush().ok().expect("Could not flush stdout");
     let mut input_text = String::new();
     io::stdin()
@@ -65,21 +95,14 @@ fn read_number(prompt: &str, min: usize, max: usize) -> usize {
         .expect("failed to read from stdin");
 
     let trimmed = input_text.trim();
-    match trimmed.parse::<usize>() {
-        Ok(i) => {
-            if min <= i && i < max {
-                return i;
-            } else {
-                println!("Please input number between {} ~ {}", min, max);
-                return read_number(prompt, min, max);
-            }
-        }
-        Err(..) => {
-            println!("Please input number between {} ~ {}", min, max);
-            return read_number(prompt, min, max);
-        }
+    let searchResult: PostSearchResult = client.team(team.name.to_owned()).group(group.name.to_owned()).search(trimmed);
+    for (i, post) in searchResult.posts.iter().enumerate() {
+        println!("{}: {}", i, post.title);
     }
+    let idx = read_number("> ", 0, searchResult.posts.len());
+    show_post(&searchResult.posts[idx]);
 }
+
 
 fn browse_team(client: Client, team: &Team) {
     let groups: Vec<Group> = client.team(team.name.to_owned()).groups();
@@ -91,9 +114,31 @@ fn browse_team(client: Client, team: &Team) {
         for (i, group) in groups.iter().enumerate() {
             println!("{}: {}", i, group.name);
         }
-        let idx = read_number("> ", 0, groups.len());
-        browse_group(client, team, &groups[idx]);
+        println!("{}: Search Posts", groups.len());
+        let idx = read_number("> ", 0, groups.len() + 1);
+        if idx == groups.len() {
+            search_team_posts(client, team);
+        } else {
+            browse_group(client, team, &groups[idx]);
+        }
     }
+}
+
+fn search_team_posts(client: Client, team: &Team) {
+    print!("q> ");
+    io::stdout().flush().ok().expect("Could not flush stdout");
+    let mut input_text = String::new();
+    io::stdin()
+        .read_line(&mut input_text)
+        .expect("failed to read from stdin");
+
+    let trimmed = input_text.trim();
+    let searchResult: PostSearchResult = client.team(team.name.to_owned()).search(trimmed);
+    for (i, post) in searchResult.posts.iter().enumerate() {
+        println!("{}: {}", i, post.title);
+    }
+    let idx = read_number("> ", 0, searchResult.posts.len());
+    show_post(&searchResult.posts[idx]);
 }
 
 fn main() {
