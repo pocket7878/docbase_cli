@@ -64,7 +64,7 @@ fn show_choose(items: Vec<(&str, bool)>) -> usize {
     return idx;
 }
 
-fn show_post(post: &Post) {
+fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, on_finish: F) {
     let tmpfile: tempfile::NamedTempFile = tempfile::NamedTempFile::new().unwrap();
     let mut file: File = OpenOptions::new().write(true).open(tmpfile.path()).unwrap();
     match file.write_all(post.body.as_bytes()) {
@@ -82,6 +82,7 @@ fn show_post(post: &Post) {
                     if !status.success() {
                         panic!("View failed!");
                     }
+                    on_finish(client);
                 }
                 None => {
                     panic!("Failed to get temporary file path.");
@@ -101,7 +102,7 @@ fn browse_group(client: Client, team: &Team, group: &Group) {
                    &searchResult,
                    "Change Group",
                    &|client| browse_team(client, team),
-                   &|client| search_group_posts(client, team, group));
+                   &|client| search_group_posts(client, team, group))
     }
 }
 
@@ -112,8 +113,8 @@ fn search_group_posts(client: Client, team: &Team, group: &Group) {
         client.team(team.name.to_owned()).group(group.name.to_owned()).search(&q);
     show_post_search_results(client,
                              &searchResult,
-                             |client| browse_group(client, team, group),
-                             |client| search_group_posts(client, team, group));
+                             &|client| browse_group(client, team, group),
+                             &|client| search_group_posts(client, team, group));
 }
 
 
@@ -166,26 +167,18 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 4);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_posts(
-                    client, 
-                    &prevPageResult, 
-                    change_msg,
-                    on_change,
-                    on_search);
+                show_posts(client, &prevPageResult, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 1 {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_posts(
-                    client,
-                    &nextPageResult,
-                    change_msg,
-                    on_change,
-                    on_search);
+                show_posts(client, &nextPageResult, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 2 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 3 {
                 on_change(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_posts(client, searchResult, change_msg, on_change, on_search)
+                });
             }
         } else if searchResult.meta.previous_page.is_some() {
             println!("{}: Show PrevPage", searchResult.posts.len());
@@ -194,18 +187,15 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_posts(
-                    client,
-                    &prevPageResult,
-                    change_msg,
-                    on_change,
-                    on_search);
+                show_posts(client, &prevPageResult, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 1 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_posts(client, searchResult, change_msg, on_change, on_search)
+                });
             }
         } else if searchResult.meta.next_page.is_some() {
             println!("{}: Show NextPage", searchResult.posts.len());
@@ -214,18 +204,15 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_posts(
-                    client,
-                    &nextPageResult,
-                    change_msg,
-                    on_change,
-                    on_search);
+                show_posts(client, &nextPageResult, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 1 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_posts(client, searchResult, change_msg, on_change, on_search)
+                });
             }
         } else {
             println!("{}: Search Post", searchResult.posts.len());
@@ -236,7 +223,9 @@ fn show_posts<F1, F2>(client: Client,
             } else if idx == searchResult.posts.len() + 1 {
                 on_change(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_posts(client, searchResult, change_msg, on_change, on_search)
+                });
             }
         }
     }
@@ -244,8 +233,8 @@ fn show_posts<F1, F2>(client: Client,
 
 fn show_post_search_results<F1, F2>(client: Client,
                                     searchResult: &PostSearchResult,
-                                    on_quit_search: F1,
-                                    on_change_word: F2)
+                                    on_quit_search: &F1,
+                                    on_change_word: &F2)
     where F1: Fn(Client) -> (),
           F2: Fn(Client) -> ()
 {
@@ -281,7 +270,9 @@ fn show_post_search_results<F1, F2>(client: Client,
             } else if idx == searchResult.posts.len() + 3 {
                 on_change_word(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
+                });
             }
         } else if searchResult.meta.previous_page.is_some() {
             println!("{}: Show PrevPage", searchResult.posts.len());
@@ -296,7 +287,9 @@ fn show_post_search_results<F1, F2>(client: Client,
             } else if idx == searchResult.posts.len() + 2 {
                 on_change_word(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
+                });
             }
         } else if searchResult.meta.next_page.is_some() {
             println!("{}: Show NextPage", searchResult.posts.len());
@@ -311,7 +304,9 @@ fn show_post_search_results<F1, F2>(client: Client,
             } else if idx == searchResult.posts.len() + 2 {
                 on_change_word(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
+                });
             }
         } else {
             println!("{}: Quit Search", searchResult.posts.len());
@@ -322,7 +317,9 @@ fn show_post_search_results<F1, F2>(client: Client,
             } else if idx == searchResult.posts.len() + 1 {
                 on_change_word(client);
             } else {
-                show_post(&searchResult.posts[idx]);
+                show_post(client, &searchResult.posts[idx], |client| {
+                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
+                });
             }
         }
     }
@@ -333,8 +330,8 @@ fn search_team_posts(client: Client, team: &Team) {
     let searchResult: PostSearchResult = client.team(team.name.to_owned()).search(&q);
     show_post_search_results(client,
                              &searchResult,
-                             move |client| browse_team(client, team),
-                             move |client| search_team_posts(client, team));
+                             &|client| browse_team(client, team),
+                             &|client| search_team_posts(client, team));
 }
 
 fn browse_top(client: Client) {
