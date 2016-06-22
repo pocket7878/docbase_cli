@@ -44,10 +44,31 @@ impl Client {
         return post;
     }
 
-    pub fn load_next_post_search_result(&self,
-                                        res: post_search_result::PostSearchResult)
+    pub fn load_prev_post_search_result(&self,
+                                        res: &post_search_result::PostSearchResult)
                                         -> post_search_result::PostSearchResult {
-        match res.meta.next_page {
+        match res.meta.previous_page.to_owned() {
+            Some(prev_url) => {
+                let client = client::Client::new();
+                let mut headers = Headers::new();
+                headers.set(XDocBaseToken(self.api_key.to_owned()));
+                let mut res = client.get(&prev_url).headers(headers).send().unwrap();
+                let mut buffer = String::new();
+                res.read_to_string(&mut buffer).unwrap();
+                let searchResult: post_search_result::PostSearchResult = json::decode(&buffer)
+                    .unwrap();
+                return searchResult;
+            }
+            None => {
+                panic!("No previous url");
+            }
+        }
+    }
+
+    pub fn load_next_post_search_result(&self,
+                                        res: &post_search_result::PostSearchResult)
+                                        -> post_search_result::PostSearchResult {
+        match res.meta.next_page.to_owned() {
             Some(next_url) => {
                 let client = client::Client::new();
                 let mut headers = Headers::new();

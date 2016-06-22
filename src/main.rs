@@ -38,6 +38,32 @@ fn read_number(prompt: &str, min: usize, max: usize) -> usize {
     }
 }
 
+fn read_string(prompt: &str) -> String {
+    print!("{}", prompt);
+    io::stdout().flush().ok().expect("Could not flush stdout");
+    let mut input_text = String::new();
+    io::stdin()
+        .read_line(&mut input_text)
+        .expect("failed to read from stdin");
+
+    let trimmed = String::from(input_text.trim());
+    return trimmed;
+}
+
+fn show_choose(items: Vec<(&str, bool)>) -> usize {
+    let mut count = 0;
+    for item in items {
+        if item.1 {
+            println!("{}: {}", count, item.0);
+            count += 1;
+        } else {
+            println!("{}", item.0);
+        }
+    }
+    let idx = read_number("> ", 0, count);
+    return idx;
+}
+
 fn show_post(post: &Post) {
     let tmpfile: tempfile::NamedTempFile = tempfile::NamedTempFile::new().unwrap();
     let mut file: File = OpenOptions::new().write(true).open(tmpfile.path()).unwrap();
@@ -71,109 +97,23 @@ fn browse_group(client: Client, team: &Team, group: &Group) {
     if searchResult.posts.len() < 1 {
         println!("No post found");
     } else {
-        show_group_posts(client, team, group, searchResult);
+        show_posts(client,
+                   &searchResult,
+                   "Change Group",
+                   &|client| browse_team(client, team),
+                   &|client| search_group_posts(client, team, group));
     }
 }
 
-fn show_group_posts(client: Client, team: &Team, group: &Group, searchResult: PostSearchResult) {
-    if searchResult.posts.len() < 1 {
-        println!("No post found");
-    } else {
-        for (i, post) in searchResult.posts.iter().enumerate() {
-            println!("{}: {}", i, post.title);
-        }
-        println!("");
-        if searchResult.meta.next_page.is_some() {
-            println!("{}: Show NextPage", searchResult.posts.len());
-            println!("{}: Change group", searchResult.posts.len() + 1);
-            println!("{}: Search Posts", searchResult.posts.len() + 2);
-            let idx = read_number("> ", 0, searchResult.posts.len() + 3);
-            if idx == searchResult.posts.len() {
-                let nextPageSearchResult = client.load_next_post_search_result(searchResult);
-                show_search_group_post_results(client, team, group, nextPageSearchResult);
-            } else if idx == (searchResult.posts.len() + 1) {
-                browse_team(client, team);
-            } else if idx == (searchResult.posts.len() + 2) {
-                search_group_posts(client, team, group);
-            } else {
-                show_post(&searchResult.posts[idx]);
-            }
-        } else {
-            println!("{}: Change group", searchResult.posts.len());
-            println!("{}: Search Posts", searchResult.posts.len() + 1);
-            let idx = read_number("> ", 0, searchResult.posts.len() + 2);
-            if idx == searchResult.posts.len() {
-                browse_team(client, team);
-            } else if idx == (searchResult.posts.len() + 1) {
-                search_group_posts(client, team, group);
-            } else {
-                show_post(&searchResult.posts[idx]);
-            }
-        }
-    }
-}
-
-fn show_search_group_post_results(client: Client,
-                                  team: &Team,
-                                  group: &Group,
-                                  searchResult: PostSearchResult) {
-    if searchResult.posts.len() < 1 {
-        println!("No post found");
-        println!("0: Quit Search");
-        println!("1: Change word");
-        let idx = read_number("> ", 0, 2);
-        match idx {
-            0 => browse_group(client, team, group),
-            1 => search_group_posts(client, team, group),
-            _ => panic!("Illigal"),
-        }
-    } else {
-        for (i, post) in searchResult.posts.iter().enumerate() {
-            println!("{}: {}", i, post.title);
-        }
-        println!("");
-        if searchResult.meta.next_page.is_some() {
-            println!("{}: Show NextPage", searchResult.posts.len());
-            println!("{}: Quit Search", searchResult.posts.len() + 1);
-            println!("{}: Change word", searchResult.posts.len() + 2);
-            let idx = read_number("> ", 0, searchResult.posts.len() + 3);
-            if idx == searchResult.posts.len() {
-                let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_search_group_post_results(client, team, group, nextPageResult);
-            } else if idx == searchResult.posts.len() + 1 {
-                browse_group(client, team, group);
-            } else if idx == searchResult.posts.len() + 2 {
-                search_group_posts(client, team, group);
-            } else {
-                show_post(&searchResult.posts[idx]);
-            }
-        } else {
-            println!("{}: Quit Search", searchResult.posts.len());
-            println!("{}: Change word", searchResult.posts.len() + 1);
-            let idx = read_number("> ", 0, searchResult.posts.len() + 2);
-            if idx == searchResult.posts.len() {
-                browse_group(client, team, group);
-            } else if idx == searchResult.posts.len() + 1 {
-                search_group_posts(client, team, group);
-            } else {
-                show_post(&searchResult.posts[idx]);
-            }
-        }
-    }
-}
 
 fn search_group_posts(client: Client, team: &Team, group: &Group) {
-    print!("q> ");
-    io::stdout().flush().ok().expect("Could not flush stdout");
-    let mut input_text = String::new();
-    io::stdin()
-        .read_line(&mut input_text)
-        .expect("failed to read from stdin");
-
-    let trimmed = input_text.trim();
+    let q = read_string("q> ");
     let searchResult: PostSearchResult =
-        client.team(team.name.to_owned()).group(group.name.to_owned()).search(trimmed);
-    show_search_group_post_results(client, team, group, searchResult);
+        client.team(team.name.to_owned()).group(group.name.to_owned()).search(&q);
+    show_post_search_results(client,
+                             &searchResult,
+                             |client| browse_group(client, team, group),
+                             |client| search_group_posts(client, team, group));
 }
 
 
@@ -184,16 +124,18 @@ fn browse_team(client: Client, team: &Team) {
     } else if (groups.len() == 1) {
         browse_group(client, team, groups.first().unwrap());
     } else {
+        let mut acc: Vec<(&str, bool)> = Vec::new();
         for (i, group) in groups.iter().enumerate() {
-            println!("{}: {}", i, group.name);
+            acc.push((&group.name, true));
         }
-        println!("");
-        println!("{}: Change team", groups.len());
-        println!("{}: Search Posts", groups.len() + 1);
-        let idx = read_number("> ", 0, groups.len() + 2);
-        if idx == groups.len() {
+        acc.push(("", false));
+        acc.push(("Change team", true));
+        acc.push(("Search Posts", true));
+        let idx = show_choose(acc);
+        let group_count = groups.len();
+        if idx == group_count {
             browse_top(client);
-        } else if idx == (groups.len() + 1) {
+        } else if idx == (group_count + 1) {
             search_team_posts(client, team);
         } else {
             browse_group(client, team, &groups[idx]);
@@ -201,15 +143,120 @@ fn browse_team(client: Client, team: &Team) {
     }
 }
 
-fn show_search_team_post_results(client: Client, team: &Team, searchResult: PostSearchResult) {
+fn show_posts<F1, F2>(client: Client,
+                      searchResult: &PostSearchResult,
+                      change_msg: &str,
+                      on_change: &F1,
+                      on_search: &F2)
+    where F1: Fn(Client) -> (),
+          F2: Fn(Client) -> ()
+{
+    if searchResult.posts.len() < 1 {
+        println!("No post found");
+    } else {
+        for (i, post) in searchResult.posts.iter().enumerate() {
+            println!("{}: {}", i, post.title);
+        }
+        println!("");
+        if searchResult.meta.previous_page.is_some() && searchResult.meta.next_page.is_some() {
+            println!("{}: Show PrevPage", searchResult.posts.len());
+            println!("{}: Show NextPage", searchResult.posts.len() + 1);
+            println!("{}: Search Post", searchResult.posts.len() + 2);
+            println!("{}: {}", searchResult.posts.len() + 3, change_msg);
+            let idx = read_number("> ", 0, searchResult.posts.len() + 4);
+            if idx == searchResult.posts.len() {
+                let prevPageResult = client.load_prev_post_search_result(searchResult);
+                show_posts(
+                    client, 
+                    &prevPageResult, 
+                    change_msg,
+                    on_change,
+                    on_search);
+            } else if idx == searchResult.posts.len() + 1 {
+                let nextPageResult = client.load_next_post_search_result(searchResult);
+                show_posts(
+                    client,
+                    &nextPageResult,
+                    change_msg,
+                    on_change,
+                    on_search);
+            } else if idx == searchResult.posts.len() + 2 {
+                on_search(client);
+            } else if idx == searchResult.posts.len() + 3 {
+                on_change(client);
+            } else {
+                show_post(&searchResult.posts[idx]);
+            }
+        } else if searchResult.meta.previous_page.is_some() {
+            println!("{}: Show PrevPage", searchResult.posts.len());
+            println!("{}: Search Post", searchResult.posts.len() + 1);
+            println!("{}: {}", searchResult.posts.len() + 2, change_msg);
+            let idx = read_number("> ", 0, searchResult.posts.len() + 3);
+            if idx == searchResult.posts.len() {
+                let prevPageResult = client.load_prev_post_search_result(searchResult);
+                show_posts(
+                    client,
+                    &prevPageResult,
+                    change_msg,
+                    on_change,
+                    on_search);
+            } else if idx == searchResult.posts.len() + 1 {
+                on_search(client);
+            } else if idx == searchResult.posts.len() + 2 {
+                on_change(client);
+            } else {
+                show_post(&searchResult.posts[idx]);
+            }
+        } else if searchResult.meta.next_page.is_some() {
+            println!("{}: Show NextPage", searchResult.posts.len());
+            println!("{}: Search Post", searchResult.posts.len() + 1);
+            println!("{}: {}", searchResult.posts.len() + 2, change_msg);
+            let idx = read_number("> ", 0, searchResult.posts.len() + 3);
+            if idx == searchResult.posts.len() {
+                let nextPageResult = client.load_next_post_search_result(searchResult);
+                show_posts(
+                    client,
+                    &nextPageResult,
+                    change_msg,
+                    on_change,
+                    on_search);
+            } else if idx == searchResult.posts.len() + 1 {
+                on_search(client);
+            } else if idx == searchResult.posts.len() + 2 {
+                on_change(client);
+            } else {
+                show_post(&searchResult.posts[idx]);
+            }
+        } else {
+            println!("{}: Search Post", searchResult.posts.len());
+            println!("{}: {}", searchResult.posts.len() + 1, change_msg);
+            let idx = read_number("> ", 0, searchResult.posts.len() + 2);
+            if idx == searchResult.posts.len() {
+                on_search(client);
+            } else if idx == searchResult.posts.len() + 1 {
+                on_change(client);
+            } else {
+                show_post(&searchResult.posts[idx]);
+            }
+        }
+    }
+}
+
+fn show_post_search_results<F1, F2>(client: Client,
+                                    searchResult: &PostSearchResult,
+                                    on_quit_search: F1,
+                                    on_change_word: F2)
+    where F1: Fn(Client) -> (),
+          F2: Fn(Client) -> ()
+{
     if searchResult.posts.len() < 1 {
         println!("No post found");
         println!("0: Quit Search");
         println!("1: Change word");
         let idx = read_number("> ", 0, 2);
         match idx {
-            0 => browse_team(client, team),
-            1 => search_team_posts(client, team),
+            0 => on_quit_search(client),
+            1 => on_change_word(client),
             _ => panic!("Illigal"),
         }
     } else {
@@ -217,18 +264,52 @@ fn show_search_team_post_results(client: Client, team: &Team, searchResult: Post
             println!("{}: {}", i, post.title);
         }
         println!("");
-        if searchResult.meta.next_page.is_some() {
+        if searchResult.meta.previous_page.is_some() && searchResult.meta.next_page.is_some() {
+            println!("{}: Show PrevPage", searchResult.posts.len());
+            println!("{}: Show NextPage", searchResult.posts.len() + 1);
+            println!("{}: Quit Search", searchResult.posts.len() + 2);
+            println!("{}: Change word", searchResult.posts.len() + 3);
+            let idx = read_number("> ", 0, searchResult.posts.len() + 4);
+            if idx == searchResult.posts.len() {
+                let prevPageResult = client.load_prev_post_search_result(searchResult);
+                show_post_search_results(client, &prevPageResult, on_quit_search, on_change_word);
+            } else if idx == searchResult.posts.len() + 1 {
+                let nextPageResult = client.load_next_post_search_result(searchResult);
+                show_post_search_results(client, &nextPageResult, on_quit_search, on_change_word);
+            } else if idx == searchResult.posts.len() + 2 {
+                on_quit_search(client);
+            } else if idx == searchResult.posts.len() + 3 {
+                on_change_word(client);
+            } else {
+                show_post(&searchResult.posts[idx]);
+            }
+        } else if searchResult.meta.previous_page.is_some() {
+            println!("{}: Show PrevPage", searchResult.posts.len());
+            println!("{}: Quit Search", searchResult.posts.len() + 1);
+            println!("{}: Change word", searchResult.posts.len() + 2);
+            let idx = read_number("> ", 0, searchResult.posts.len() + 3);
+            if idx == searchResult.posts.len() {
+                let prevPageResult = client.load_prev_post_search_result(searchResult);
+                show_post_search_results(client, &prevPageResult, on_quit_search, on_change_word);
+            } else if idx == searchResult.posts.len() + 1 {
+                on_quit_search(client);
+            } else if idx == searchResult.posts.len() + 2 {
+                on_change_word(client);
+            } else {
+                show_post(&searchResult.posts[idx]);
+            }
+        } else if searchResult.meta.next_page.is_some() {
             println!("{}: Show NextPage", searchResult.posts.len());
             println!("{}: Quit Search", searchResult.posts.len() + 1);
             println!("{}: Change word", searchResult.posts.len() + 2);
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_search_team_post_results(client, team, nextPageResult);
+                show_post_search_results(client, &nextPageResult, on_quit_search, on_change_word);
             } else if idx == searchResult.posts.len() + 1 {
-                browse_team(client, team);
+                on_quit_search(client);
             } else if idx == searchResult.posts.len() + 2 {
-                search_team_posts(client, team);
+                on_change_word(client);
             } else {
                 show_post(&searchResult.posts[idx]);
             }
@@ -237,9 +318,9 @@ fn show_search_team_post_results(client: Client, team: &Team, searchResult: Post
             println!("{}: Change word", searchResult.posts.len() + 1);
             let idx = read_number("> ", 0, searchResult.posts.len() + 2);
             if idx == searchResult.posts.len() {
-                browse_team(client, team);
+                on_quit_search(client);
             } else if idx == searchResult.posts.len() + 1 {
-                search_team_posts(client, team);
+                on_change_word(client);
             } else {
                 show_post(&searchResult.posts[idx]);
             }
@@ -248,16 +329,12 @@ fn show_search_team_post_results(client: Client, team: &Team, searchResult: Post
 }
 
 fn search_team_posts(client: Client, team: &Team) {
-    print!("q> ");
-    io::stdout().flush().ok().expect("Could not flush stdout");
-    let mut input_text = String::new();
-    io::stdin()
-        .read_line(&mut input_text)
-        .expect("failed to read from stdin");
-
-    let trimmed = input_text.trim();
-    let searchResult: PostSearchResult = client.team(team.name.to_owned()).search(trimmed);
-    show_search_team_post_results(client, team, searchResult);
+    let q = read_string("q> ");
+    let searchResult: PostSearchResult = client.team(team.name.to_owned()).search(&q);
+    show_post_search_results(client,
+                             &searchResult,
+                             move |client| browse_team(client, team),
+                             move |client| search_team_posts(client, team));
 }
 
 fn browse_top(client: Client) {
