@@ -372,28 +372,34 @@ fn browse_top(client: Client, pager: &str) {
 }
 
 fn main() {
-    let key = "DOCBASE_TOKEN";
-    let api_token = match env::var(key) {
-        Ok(v) => v,
-        Err(e) => panic!("environment variable `DOCBASE_TOKEN` not found"),
-    };
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
     let mut opts = Options::new();
-    opts.optopt("t", "team-domain", "set team domain name", "TEAM_DOMAIN");
+    opts.optopt("t", "token", "set your docbase api token", "DOCBASE_TOKEN");
+    opts.optopt("d", "domain", "set team domain name", "TEAM_DOMAIN");
     opts.optopt("g", "group", "set group name", "GROUP_NAME");
     opts.optopt("p", "pager", "set pager program", "PAGER");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => panic!(f.to_string()),
     };
-    let tdomain = matches.opt_str("t");
+    let token: String = match matches.opt_str("t") {
+        Some(t) => { t },
+        None => {
+            let key = "DOCBASE_TOKEN";
+            match env::var(key) {
+                Ok(v) => v,
+                Err(_) => panic!("Nether environment variable `DOCBASE_TOKEN` nor token option not found"),
+            }
+        }
+    };c
+    let tdomain = matches.opt_str("d");
     let gname = matches.opt_str("g");
     let pager = match matches.opt_str("p") {
         Some(p) => {p},
         None => String::from("less")
     };
-    let client = Client { api_key: api_token.to_owned() };
+    let client = Client { api_key: token };
     if tdomain.is_some() && gname.is_some() {
         browse_group(client, &tdomain.unwrap(), &gname.unwrap(), &pager);
     } else if tdomain.is_some() {

@@ -12,7 +12,7 @@ Now you can use `docbase-cli`.
 
 ## Envvar
 
-Please set `DOCBASE_TOKEN` to your docbase api token.
+Please set `DOCBASE_TOKEN` to your docbase api token or use `token` option.
 
 ## Usage
 
@@ -22,28 +22,40 @@ Please set `DOCBASE_TOKEN` to your docbase api token.
 $ docbase-cli
 ```
 
-- Specify your team domain
+- Specify your docbase token with option.
 
 ```
-$ docbase-cli -t foobar
+$ docbase-cli -t "your docbase token"
 ```
 
 or
 
 ```
-$ docbase-cli --team foobar
+$ docbase-cli --token "your docbase token"
+```
+
+- Specify your team domain
+
+```
+$ docbase-cli -d foobar
+```
+
+or
+
+```
+$ docbase-cli --domain foobar
 ```
 
 - Specify your team and group
 
 ```
-$ docbase-cli -t foobar -g baz
+$ docbase-cli -d foobar -g baz
 ```
 
 or
 
 ```
-$ docbase-cli --team foobar --group baz
+$ docbase-cli --domain foobar --group baz
 ```
 
 - Specify pager program
