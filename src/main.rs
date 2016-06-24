@@ -359,13 +359,13 @@ fn main() {
     };
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
-    let mut opts =  Options::new();
+    let mut opts = Options::new();
     opts.optopt("t", "team-domain", "set team domain name", "TEAM_DOMAIN");
     opts.optopt("g", "group", "set group name", "GROUP_NAME");
     opts.optopt("p", "pager", "set pager program", "PAGER");
     let matches = match opts.parse(&args[1..]) {
-        Ok(m) => {m},
-        Err(f) => { panic!(f.to_string()) }
+        Ok(m) => m,
+        Err(f) => panic!(f.to_string()),
     };
     let tdomain = matches.opt_str("t");
     let gname = matches.opt_str("g");
