@@ -66,7 +66,7 @@ fn show_choose(items: Vec<(&str, bool)>) -> usize {
     return idx;
 }
 
-fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, on_finish: F) {
+fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, pager: &str, on_finish: F) {
     let tmpfile: tempfile::NamedTempFile = tempfile::NamedTempFile::new().unwrap();
     let mut file: File = OpenOptions::new().write(true).open(tmpfile.path()).unwrap();
     match file.write_all(post.body.as_bytes()) {
@@ -76,7 +76,7 @@ fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, on_finish: F) {
         Ok(_) => {
             match tmpfile.path().to_str() {
                 Some(pth) => {
-                    let mut edit = Command::new("less");
+                    let mut edit = Command::new(pager);
                     edit.arg(pth);
                     let status = edit.status().unwrap_or_else(|e| {
                         panic!("Failed to open view: {}", e);
@@ -94,7 +94,7 @@ fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, on_finish: F) {
     }
 }
 
-fn browse_group(client: Client, team: &str, group: &str) {
+fn browse_group(client: Client, team: &str, group: &str, pager: &str) {
     let searchResult: PostSearchResult =
         client.team(team.to_owned()).group(group.to_owned()).send();
     if searchResult.posts.len() < 1 {
@@ -102,30 +102,32 @@ fn browse_group(client: Client, team: &str, group: &str) {
     } else {
         show_posts(client,
                    &searchResult,
+                   pager,
                    "Change Group",
-                   &|client| browse_team(client, team),
-                   &|client| search_group_posts(client, team, group))
+                   &|client| browse_team(client, team, pager),
+                   &|client| search_group_posts(client, team, group, pager))
     }
 }
 
 
-fn search_group_posts(client: Client, team: &str, group: &str) {
+fn search_group_posts(client: Client, team: &str, group: &str, pager: &str) {
     let q = read_string("q> ");
     let searchResult: PostSearchResult =
         client.team(team.to_owned()).group(group.to_owned()).search(&q);
     show_post_search_results(client,
                              &searchResult,
-                             &|client| browse_group(client, team, group),
-                             &|client| search_group_posts(client, team, group));
+                             pager,
+                             &|client| browse_group(client, team, group, pager),
+                             &|client| search_group_posts(client, team, group, pager));
 }
 
 
-fn browse_team(client: Client, team: &str) {
+fn browse_team(client: Client, team: &str, pager: &str) {
     let groups: Vec<Group> = client.team(team.to_owned()).groups();
     if groups.len() < 1 {
         println!("No group found.");
     } else if groups.len() == 1 {
-        browse_group(client, team, &groups.first().unwrap().name);
+        browse_group(client, team, &groups.first().unwrap().name, pager);
     } else {
         let mut acc: Vec<(&str, bool)> = Vec::new();
         for (i, group) in groups.iter().enumerate() {
@@ -137,17 +139,18 @@ fn browse_team(client: Client, team: &str) {
         let idx = show_choose(acc);
         let group_count = groups.len();
         if idx == group_count {
-            browse_top(client);
+            browse_top(client, pager);
         } else if idx == (group_count + 1) {
-            search_team_posts(client, team);
+            search_team_posts(client, team, pager);
         } else {
-            browse_group(client, team, &groups[idx].name);
+            browse_group(client, team, &groups[idx].name, pager);
         }
     }
 }
 
 fn show_posts<F1, F2>(client: Client,
                       searchResult: &PostSearchResult,
+                      pager: &str,
                       change_msg: &str,
                       on_change: &F1,
                       on_search: &F2)
@@ -169,18 +172,19 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 4);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_posts(client, &prevPageResult, change_msg, on_change, on_search);
+                show_posts(client, &prevPageResult, pager, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 1 {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_posts(client, &nextPageResult, change_msg, on_change, on_search);
+                show_posts(client, &nextPageResult, pager, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 2 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 3 {
                 on_change(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_posts(client, searchResult, change_msg, on_change, on_search)
-                });
+                show_post(client, &searchResult.posts[idx], pager,
+                          |client| {
+                              show_posts(client, searchResult, pager, change_msg, on_change, on_search)
+                          });
             }
         } else if searchResult.meta.previous_page.is_some() {
             println!("{}: Show PrevPage", searchResult.posts.len());
@@ -189,15 +193,17 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_posts(client, &prevPageResult, change_msg, on_change, on_search);
+                show_posts(client, &prevPageResult, pager, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 1 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_posts(client, searchResult, change_msg, on_change, on_search)
-                });
+                show_post(client, &searchResult.posts[idx],
+                          pager,
+                          |client| {
+                              show_posts(client, searchResult, pager, change_msg, on_change, on_search)
+                          });
             }
         } else if searchResult.meta.next_page.is_some() {
             println!("{}: Show NextPage", searchResult.posts.len());
@@ -206,15 +212,17 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_posts(client, &nextPageResult, change_msg, on_change, on_search);
+                show_posts(client, &nextPageResult, pager, change_msg, on_change, on_search);
             } else if idx == searchResult.posts.len() + 1 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_posts(client, searchResult, change_msg, on_change, on_search)
-                });
+                show_post(client, &searchResult.posts[idx],
+                          pager,
+                          |client| {
+                              show_posts(client, searchResult, pager, change_msg, on_change, on_search)
+                          });
             }
         } else {
             println!("{}: Search Post", searchResult.posts.len());
@@ -225,9 +233,11 @@ fn show_posts<F1, F2>(client: Client,
             } else if idx == searchResult.posts.len() + 1 {
                 on_change(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_posts(client, searchResult, change_msg, on_change, on_search)
-                });
+                show_post(client, &searchResult.posts[idx],
+                          pager,
+                          |client| {
+                              show_posts(client, searchResult, pager, change_msg, on_change, on_search)
+                          });
             }
         }
     }
@@ -235,6 +245,7 @@ fn show_posts<F1, F2>(client: Client,
 
 fn show_post_search_results<F1, F2>(client: Client,
                                     searchResult: &PostSearchResult,
+                                    pager: &str,
                                     on_quit_search: &F1,
                                     on_change_word: &F2)
     where F1: Fn(Client) -> (),
@@ -263,18 +274,20 @@ fn show_post_search_results<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 4);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_post_search_results(client, &prevPageResult, on_quit_search, on_change_word);
+                show_post_search_results(client, &prevPageResult, pager, on_quit_search, on_change_word);
             } else if idx == searchResult.posts.len() + 1 {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_post_search_results(client, &nextPageResult, on_quit_search, on_change_word);
+                show_post_search_results(client, &nextPageResult, pager, on_quit_search, on_change_word);
             } else if idx == searchResult.posts.len() + 2 {
                 on_quit_search(client);
             } else if idx == searchResult.posts.len() + 3 {
                 on_change_word(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
-                });
+                show_post(client, &searchResult.posts[idx],
+                          pager,
+                          |client| {
+                              show_post_search_results(client, searchResult, pager, on_quit_search, on_change_word)
+                          });
             }
         } else if searchResult.meta.previous_page.is_some() {
             println!("{}: Show PrevPage", searchResult.posts.len());
@@ -283,15 +296,17 @@ fn show_post_search_results<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_post_search_results(client, &prevPageResult, on_quit_search, on_change_word);
+                show_post_search_results(client, &prevPageResult, pager, on_quit_search, on_change_word);
             } else if idx == searchResult.posts.len() + 1 {
                 on_quit_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change_word(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
-                });
+                show_post(client, &searchResult.posts[idx],
+                          pager,
+                          |client| {
+                              show_post_search_results(client, searchResult, pager, on_quit_search, on_change_word)
+                          });
             }
         } else if searchResult.meta.next_page.is_some() {
             println!("{}: Show NextPage", searchResult.posts.len());
@@ -300,14 +315,16 @@ fn show_post_search_results<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_post_search_results(client, &nextPageResult, on_quit_search, on_change_word);
+                show_post_search_results(client, &nextPageResult, pager, on_quit_search, on_change_word);
             } else if idx == searchResult.posts.len() + 1 {
                 on_quit_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change_word(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
+                show_post(client, &searchResult.posts[idx],
+                          pager,
+                          |client| {
+                              show_post_search_results(client, searchResult, pager, on_quit_search, on_change_word)
                 });
             }
         } else {
@@ -319,35 +336,38 @@ fn show_post_search_results<F1, F2>(client: Client,
             } else if idx == searchResult.posts.len() + 1 {
                 on_change_word(client);
             } else {
-                show_post(client, &searchResult.posts[idx], |client| {
-                    show_post_search_results(client, searchResult, on_quit_search, on_change_word)
-                });
+                show_post(client, &searchResult.posts[idx],
+                          pager,
+                          |client| {
+                              show_post_search_results(client, searchResult, pager, on_quit_search, on_change_word)
+                          });
             }
         }
     }
 }
 
-fn search_team_posts(client: Client, team: &str) {
+fn search_team_posts(client: Client, team: &str, pager: &str) {
     let q = read_string("q> ");
     let searchResult: PostSearchResult = client.team(team.to_owned()).search(&q);
     show_post_search_results(client,
                              &searchResult,
-                             &|client| browse_team(client, team),
-                             &|client| search_team_posts(client, team));
+                             pager,
+                             &|client| browse_team(client, team, pager),
+                             &|client| search_team_posts(client, team, pager));
 }
 
-fn browse_top(client: Client) {
+fn browse_top(client: Client, pager: &str) {
     let teams: Vec<Team> = client.teams();
     if teams.len() < 1 {
         println!("No team found");
     } else if teams.len() == 1 {
-        browse_team(client, &teams.first().unwrap().name);
+        browse_team(client, &teams.first().unwrap().name, pager);
     } else {
         for (i, team) in teams.iter().enumerate() {
             println!("{}: {}", i, team.name);
         }
         let idx = read_number("> ", 0, teams.len());
-        browse_team(client, &teams[idx].name);
+        browse_team(client, &teams[idx].name, pager);
     }
 }
 
@@ -369,13 +389,16 @@ fn main() {
     };
     let tdomain = matches.opt_str("t");
     let gname = matches.opt_str("g");
-    let pager = matches.opt_str("p");
+    let pager = match matches.opt_str("p") {
+        Some(p) => {p},
+        None => String::from("less")
+    };
     let client = Client { api_key: api_token.to_owned() };
     if tdomain.is_some() && gname.is_some() {
-        browse_group(client, &tdomain.unwrap(), &gname.unwrap());
+        browse_group(client, &tdomain.unwrap(), &gname.unwrap(), &pager);
     } else if tdomain.is_some() {
-        browse_team(client, &tdomain.unwrap());
+        browse_team(client, &tdomain.unwrap(), &pager);
     } else {
-        browse_top(client);
+        browse_top(client, &pager);
     }
 }
