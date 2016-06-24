@@ -7,3 +7,4 @@ authors = ["Pocket7878 <poketo7878@gmail.com>"]
 hyper = "*"
 rustc-serialize = "0.3"
 tempfile = "2.1.4"
+getopts = "0.2"

@@ -1,5 +1,6 @@
 extern crate docbase_cli;
 extern crate tempfile;
+extern crate getopts;
 
 use docbase_cli::client::Client;
 use docbase_cli::models::group::Group;
@@ -12,6 +13,7 @@ use std::io::Write;
 use std::process::Command;
 use std::fs::File;
 use std::fs::OpenOptions;
+use getopts::Options;
 
 fn read_number(prompt: &str, min: usize, max: usize) -> usize {
     print!("{}", prompt);
@@ -92,9 +94,9 @@ fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, on_finish: F) {
     }
 }
 
-fn browse_group(client: Client, team: &Team, group: &Group) {
+fn browse_group(client: Client, team: &str, group: &str) {
     let searchResult: PostSearchResult =
-        client.team(team.name.to_owned()).group(group.name.to_owned()).send();
+        client.team(team.to_owned()).group(group.to_owned()).send();
     if searchResult.posts.len() < 1 {
         println!("No post found");
     } else {
@@ -107,10 +109,10 @@ fn browse_group(client: Client, team: &Team, group: &Group) {
 }
 
 
-fn search_group_posts(client: Client, team: &Team, group: &Group) {
+fn search_group_posts(client: Client, team: &str, group: &str) {
     let q = read_string("q> ");
     let searchResult: PostSearchResult =
-        client.team(team.name.to_owned()).group(group.name.to_owned()).search(&q);
+        client.team(team.to_owned()).group(group.to_owned()).search(&q);
     show_post_search_results(client,
                              &searchResult,
                              &|client| browse_group(client, team, group),
@@ -118,12 +120,12 @@ fn search_group_posts(client: Client, team: &Team, group: &Group) {
 }
 
 
-fn browse_team(client: Client, team: &Team) {
-    let groups: Vec<Group> = client.team(team.name.to_owned()).groups();
-    if (groups.len() < 1) {
+fn browse_team(client: Client, team: &str) {
+    let groups: Vec<Group> = client.team(team.to_owned()).groups();
+    if groups.len() < 1 {
         println!("No group found.");
-    } else if (groups.len() == 1) {
-        browse_group(client, team, groups.first().unwrap());
+    } else if groups.len() == 1 {
+        browse_group(client, team, &groups.first().unwrap().name);
     } else {
         let mut acc: Vec<(&str, bool)> = Vec::new();
         for (i, group) in groups.iter().enumerate() {
@@ -139,7 +141,7 @@ fn browse_team(client: Client, team: &Team) {
         } else if idx == (group_count + 1) {
             search_team_posts(client, team);
         } else {
-            browse_group(client, team, &groups[idx]);
+            browse_group(client, team, &groups[idx].name);
         }
     }
 }
@@ -325,9 +327,9 @@ fn show_post_search_results<F1, F2>(client: Client,
     }
 }
 
-fn search_team_posts(client: Client, team: &Team) {
+fn search_team_posts(client: Client, team: &str) {
     let q = read_string("q> ");
-    let searchResult: PostSearchResult = client.team(team.name.to_owned()).search(&q);
+    let searchResult: PostSearchResult = client.team(team.to_owned()).search(&q);
     show_post_search_results(client,
                              &searchResult,
                              &|client| browse_team(client, team),
@@ -336,16 +338,16 @@ fn search_team_posts(client: Client, team: &Team) {
 
 fn browse_top(client: Client) {
     let teams: Vec<Team> = client.teams();
-    if (teams.len() < 1) {
+    if teams.len() < 1 {
         println!("No team found");
-    } else if (teams.len() == 1) {
-        browse_team(client, teams.first().unwrap());
+    } else if teams.len() == 1 {
+        browse_team(client, &teams.first().unwrap().name);
     } else {
         for (i, team) in teams.iter().enumerate() {
             println!("{}: {}", i, team.name);
         }
         let idx = read_number("> ", 0, teams.len());
-        browse_team(client, &teams[idx]);
+        browse_team(client, &teams[idx].name);
     }
 }
 
@@ -355,6 +357,25 @@ fn main() {
         Ok(v) => v,
         Err(e) => panic!("environment variable `DOCBASE_TOKEN` not found"),
     };
+    let args: Vec<String> = env::args().collect();
+    let program = args[0].clone();
+    let mut opts =  Options::new();
+    opts.optopt("t", "team-domain", "set team domain name", "TEAM_DOMAIN");
+    opts.optopt("g", "group", "set group name", "GROUP_NAME");
+    opts.optopt("p", "pager", "set pager program", "PAGER");
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => {m},
+        Err(f) => { panic!(f.to_string()) }
+    };
+    let tdomain = matches.opt_str("t");
+    let gname = matches.opt_str("g");
+    let pager = matches.opt_str("p");
     let client = Client { api_key: api_token.to_owned() };
-    browse_top(client);
+    if tdomain.is_some() && gname.is_some() {
+        browse_group(client, &tdomain.unwrap(), &gname.unwrap());
+    } else if tdomain.is_some() {
+        browse_team(client, &tdomain.unwrap());
+    } else {
+        browse_top(client);
+    }
 }
