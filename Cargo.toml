@@ -4,8 +4,9 @@ version = "0.1.0"
 authors = ["Pocket7878 <poketo7878@gmail.com>"]
 description = "Docbase.io client"
 readme = "README.md"
+homepage = "https://github.com/pocket7878/docbase_cli"
 repositry = "https://github.com/pocket7878/docbase_cli"
-licence = "Apache-2.0"
+license = "Apache-2.0"
 
 [[bin]]
 name = "docbase_cli"
