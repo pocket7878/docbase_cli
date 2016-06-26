@@ -5,14 +5,14 @@ authors = ["Pocket7878 <poketo7878@gmail.com>"]
 description = "Docbase.io client"
 readme = "README.md"
 homepage = "https://github.com/pocket7878/docbase_cli"
-repositry = "https://github.com/pocket7878/docbase_cli"
+repository = "https://github.com/pocket7878/docbase_cli"
 license = "Apache-2.0"
 
 [[bin]]
 name = "docbase_cli"
 
 [dependencies]
-hyper = "*"
+hyper = "0.9.9"
 rustc-serialize = "0.3"
 tempfile = "2.1.4"
 getopts = "0.2"
