@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["comment",""],["group",""],["post",""],["post_search_result",""],["tag",""],["team",""],["user",""]]});

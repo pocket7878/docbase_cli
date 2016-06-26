@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["group_request_builder",""],["team_request_builder",""]]});
