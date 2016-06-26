@@ -6,6 +6,7 @@ description = "Docbase.io client"
 readme = "README.md"
 homepage = "https://github.com/pocket7878/docbase_cli"
 repository = "https://github.com/pocket7878/docbase_cli"
+documentation = "https://pocket7878.github.io/docbase_cli/docbase_io/index.html"
 license = "Apache-2.0"
 
 [[bin]]
