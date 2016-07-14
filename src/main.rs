@@ -79,22 +79,15 @@ fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, pager: &str, on_f
             panic!("couldn't write to: {}", why);
         }
         Ok(_) => {
-            match tmpfile.path().to_str() {
-                Some(pth) => {
-                    let mut edit = Command::new(pager);
-                    edit.arg(pth);
-                    let status = edit.status().unwrap_or_else(|e| {
-                        panic!("Failed to open view: {}", e);
-                    });
-                    if !status.success() {
-                        panic!("View failed!");
-                    }
-                    on_finish(client);
-                }
-                None => {
-                    panic!("Failed to get temporary file path.");
-                }
+            let mut edit = Command::new(pager);
+            edit.arg(tmpfile.path());
+            let status = edit.status().unwrap_or_else(|e| {
+                panic!("Failed to open view: {}", e);
+            });
+            if !status.success() {
+                panic!("View failed!");
             }
+            on_finish(client);
         }
     }
 }
