@@ -73,9 +73,8 @@ fn show_choose(items: Vec<(&str, bool)>) -> usize {
 }
 
 fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, pager: &str, on_finish: F) {
-    let tmpfile: tempfile::NamedTempFile = tempfile::NamedTempFile::new().unwrap();
-    let mut file: File = OpenOptions::new().write(true).open(tmpfile.path()).unwrap();
-    match file.write_all(post.body.as_bytes()) {
+    let mut tmpfile = tempfile::NamedTempFile::new().unwrap();
+    match tmpfile.write_all(post.body.as_bytes()) {
         Err(why) => {
             panic!("couldn't write to: {}", why);
         }
