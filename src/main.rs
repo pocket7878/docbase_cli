@@ -25,9 +25,9 @@ fn read_number(prompt: &str, min: usize, max: usize) -> usize {
     print!("{}", prompt);
     io::stdout().flush().ok().expect("Could not flush stdout");
     let mut input_text = String::new();
-    io::stdin()
-        .read_line(&mut input_text)
-        .expect("failed to read from stdin");
+    io::stdin().read_line(&mut input_text).expect(
+        "failed to read from stdin",
+    );
 
     let trimmed = input_text.trim();
     match trimmed.parse::<usize>() {
@@ -50,9 +50,9 @@ fn read_string(prompt: &str) -> String {
     print!("{}", prompt);
     io::stdout().flush().ok().expect("Could not flush stdout");
     let mut input_text = String::new();
-    io::stdin()
-        .read_line(&mut input_text)
-        .expect("failed to read from stdin");
+    io::stdin().read_line(&mut input_text).expect(
+        "failed to read from stdin",
+    );
 
     let trimmed = String::from(input_text.trim());
     return trimmed;
@@ -118,8 +118,10 @@ fn browse_group(client: Client, team: &str, group: &str, pager: &str) {
 
 fn search_group_posts(client: Client, team: &str, group: &str, pager: &str) {
     let q = read_string("q> ");
-    let searchResult: PostSearchResult =
-        client.team(team.to_owned()).group(group.to_owned()).search(&q);
+    let searchResult: PostSearchResult = client
+        .team(team.to_owned())
+        .group(group.to_owned())
+        .search(&q);
     show_post_search_results(client,
                              &searchResult,
                              pager,
@@ -136,7 +138,7 @@ fn browse_team(client: Client, team: &str, pager: &str) {
         browse_group(client, team, &groups.first().unwrap().name, pager);
     } else {
         let mut acc: Vec<(&str, bool)> = Vec::new();
-        for (i, group) in groups.iter().enumerate() {
+        for (_, group) in groups.iter().enumerate() {
             acc.push((&group.name, true));
         }
         acc.push(("", false));
@@ -154,14 +156,16 @@ fn browse_team(client: Client, team: &str, pager: &str) {
     }
 }
 
-fn show_posts<F1, F2>(client: Client,
-                      searchResult: &PostSearchResult,
-                      pager: &str,
-                      change_msg: &str,
-                      on_change: &F1,
-                      on_search: &F2)
-    where F1: Fn(Client) -> (),
-          F2: Fn(Client) -> ()
+fn show_posts<F1, F2>(
+    client: Client,
+    searchResult: &PostSearchResult,
+    pager: &str,
+    change_msg: &str,
+    on_change: &F1,
+    on_search: &F2,
+) where
+    F1: Fn(Client) -> (),
+    F2: Fn(Client) -> (),
 {
     if searchResult.posts.len() < 1 {
         println!("No post found");
@@ -178,32 +182,38 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 4);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_posts(client,
-                           &prevPageResult,
-                           pager,
-                           change_msg,
-                           on_change,
-                           on_search);
+                show_posts(
+                    client,
+                    &prevPageResult,
+                    pager,
+                    change_msg,
+                    on_change,
+                    on_search,
+                );
             } else if idx == searchResult.posts.len() + 1 {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_posts(client,
-                           &nextPageResult,
-                           pager,
-                           change_msg,
-                           on_change,
-                           on_search);
+                show_posts(
+                    client,
+                    &nextPageResult,
+                    pager,
+                    change_msg,
+                    on_change,
+                    on_search,
+                );
             } else if idx == searchResult.posts.len() + 2 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 3 {
                 on_change(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_posts(client,
-                               searchResult,
-                               pager,
-                               change_msg,
-                               on_change,
-                               on_search)
+                    show_posts(
+                        client,
+                        searchResult,
+                        pager,
+                        change_msg,
+                        on_change,
+                        on_search,
+                    )
                 });
             }
         } else if searchResult.meta.previous_page.is_some() {
@@ -213,24 +223,28 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_posts(client,
-                           &prevPageResult,
-                           pager,
-                           change_msg,
-                           on_change,
-                           on_search);
+                show_posts(
+                    client,
+                    &prevPageResult,
+                    pager,
+                    change_msg,
+                    on_change,
+                    on_search,
+                );
             } else if idx == searchResult.posts.len() + 1 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_posts(client,
-                               searchResult,
-                               pager,
-                               change_msg,
-                               on_change,
-                               on_search)
+                    show_posts(
+                        client,
+                        searchResult,
+                        pager,
+                        change_msg,
+                        on_change,
+                        on_search,
+                    )
                 });
             }
         } else if searchResult.meta.next_page.is_some() {
@@ -240,24 +254,28 @@ fn show_posts<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_posts(client,
-                           &nextPageResult,
-                           pager,
-                           change_msg,
-                           on_change,
-                           on_search);
+                show_posts(
+                    client,
+                    &nextPageResult,
+                    pager,
+                    change_msg,
+                    on_change,
+                    on_search,
+                );
             } else if idx == searchResult.posts.len() + 1 {
                 on_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_posts(client,
-                               searchResult,
-                               pager,
-                               change_msg,
-                               on_change,
-                               on_search)
+                    show_posts(
+                        client,
+                        searchResult,
+                        pager,
+                        change_msg,
+                        on_change,
+                        on_search,
+                    )
                 });
             }
         } else {
@@ -270,25 +288,29 @@ fn show_posts<F1, F2>(client: Client,
                 on_change(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_posts(client,
-                               searchResult,
-                               pager,
-                               change_msg,
-                               on_change,
-                               on_search)
+                    show_posts(
+                        client,
+                        searchResult,
+                        pager,
+                        change_msg,
+                        on_change,
+                        on_search,
+                    )
                 });
             }
         }
     }
 }
 
-fn show_post_search_results<F1, F2>(client: Client,
-                                    searchResult: &PostSearchResult,
-                                    pager: &str,
-                                    on_quit_search: &F1,
-                                    on_change_word: &F2)
-    where F1: Fn(Client) -> (),
-          F2: Fn(Client) -> ()
+fn show_post_search_results<F1, F2>(
+    client: Client,
+    searchResult: &PostSearchResult,
+    pager: &str,
+    on_quit_search: &F1,
+    on_change_word: &F2,
+) where
+    F1: Fn(Client) -> (),
+    F2: Fn(Client) -> (),
 {
     if searchResult.posts.len() < 1 {
         println!("No post found");
@@ -313,29 +335,35 @@ fn show_post_search_results<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 4);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_post_search_results(client,
-                                         &prevPageResult,
-                                         pager,
-                                         on_quit_search,
-                                         on_change_word);
+                show_post_search_results(
+                    client,
+                    &prevPageResult,
+                    pager,
+                    on_quit_search,
+                    on_change_word,
+                );
             } else if idx == searchResult.posts.len() + 1 {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_post_search_results(client,
-                                         &nextPageResult,
-                                         pager,
-                                         on_quit_search,
-                                         on_change_word);
+                show_post_search_results(
+                    client,
+                    &nextPageResult,
+                    pager,
+                    on_quit_search,
+                    on_change_word,
+                );
             } else if idx == searchResult.posts.len() + 2 {
                 on_quit_search(client);
             } else if idx == searchResult.posts.len() + 3 {
                 on_change_word(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_post_search_results(client,
-                                             searchResult,
-                                             pager,
-                                             on_quit_search,
-                                             on_change_word)
+                    show_post_search_results(
+                        client,
+                        searchResult,
+                        pager,
+                        on_quit_search,
+                        on_change_word,
+                    )
                 });
             }
         } else if searchResult.meta.previous_page.is_some() {
@@ -345,22 +373,26 @@ fn show_post_search_results<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let prevPageResult = client.load_prev_post_search_result(searchResult);
-                show_post_search_results(client,
-                                         &prevPageResult,
-                                         pager,
-                                         on_quit_search,
-                                         on_change_word);
+                show_post_search_results(
+                    client,
+                    &prevPageResult,
+                    pager,
+                    on_quit_search,
+                    on_change_word,
+                );
             } else if idx == searchResult.posts.len() + 1 {
                 on_quit_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change_word(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_post_search_results(client,
-                                             searchResult,
-                                             pager,
-                                             on_quit_search,
-                                             on_change_word)
+                    show_post_search_results(
+                        client,
+                        searchResult,
+                        pager,
+                        on_quit_search,
+                        on_change_word,
+                    )
                 });
             }
         } else if searchResult.meta.next_page.is_some() {
@@ -370,22 +402,26 @@ fn show_post_search_results<F1, F2>(client: Client,
             let idx = read_number("> ", 0, searchResult.posts.len() + 3);
             if idx == searchResult.posts.len() {
                 let nextPageResult = client.load_next_post_search_result(searchResult);
-                show_post_search_results(client,
-                                         &nextPageResult,
-                                         pager,
-                                         on_quit_search,
-                                         on_change_word);
+                show_post_search_results(
+                    client,
+                    &nextPageResult,
+                    pager,
+                    on_quit_search,
+                    on_change_word,
+                );
             } else if idx == searchResult.posts.len() + 1 {
                 on_quit_search(client);
             } else if idx == searchResult.posts.len() + 2 {
                 on_change_word(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_post_search_results(client,
-                                             searchResult,
-                                             pager,
-                                             on_quit_search,
-                                             on_change_word)
+                    show_post_search_results(
+                        client,
+                        searchResult,
+                        pager,
+                        on_quit_search,
+                        on_change_word,
+                    )
                 });
             }
         } else {
@@ -398,11 +434,13 @@ fn show_post_search_results<F1, F2>(client: Client,
                 on_change_word(client);
             } else {
                 show_post(client, &searchResult.posts[idx], pager, |client| {
-                    show_post_search_results(client,
-                                             searchResult,
-                                             pager,
-                                             on_quit_search,
-                                             on_change_word)
+                    show_post_search_results(
+                        client,
+                        searchResult,
+                        pager,
+                        on_quit_search,
+                        on_change_word,
+                    )
                 });
             }
         }

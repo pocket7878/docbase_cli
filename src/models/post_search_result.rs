@@ -4,11 +4,9 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
-extern crate rustc_serialize;
-
 use models::post;
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize)]
 pub struct Meta {
     pub previous_page: Option<String>,
     pub next_page: Option<String>,
@@ -16,7 +14,7 @@ pub struct Meta {
 }
 
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize)]
 pub struct PostSearchResult {
     pub posts: Vec<post::Post>,
     pub meta: Meta,

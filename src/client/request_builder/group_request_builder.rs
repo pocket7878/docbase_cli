@@ -4,10 +4,10 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
-use hyper::client;
-use hyper::header::Headers;
+use reqwest;
+use reqwest::header::Headers;
 use std::io::Read;
-use rustc_serialize::json;
+use serde_json;
 use models::post_search_result::PostSearchResult;
 
 header! { (XDocBaseToken, "X-DocbaseToken") => [String] }
@@ -28,35 +28,41 @@ impl GroupRequestBuilder {
     }
 
     pub fn send(&self) -> PostSearchResult {
-        let client = client::Client::new();
+        let client = reqwest::Client::new();
         let mut headers = Headers::new();
         headers.set(XDocBaseToken(self.api_key.to_owned()));
-        let mut res = client.get(&format!("https://api.docbase.io/teams/{}/posts?q=group:\"{}\"",
-                          self.team,
-                          self.group))
+        let mut res = client
+            .get(&format!(
+                "https://api.docbase.io/teams/{}/posts?q=group:\"{}\"",
+                self.team,
+                self.group
+            ))
             .headers(headers)
             .send()
             .unwrap();
         let mut buffer = String::new();
         res.read_to_string(&mut buffer).unwrap();
-        let searchResult: PostSearchResult = json::decode(&buffer).unwrap();
-        return searchResult;
+        let search_result: PostSearchResult = serde_json::from_str(&buffer).unwrap();
+        return search_result;
     }
 
     pub fn search(&self, q: &str) -> PostSearchResult {
-        let client = client::Client::new();
+        let client = reqwest::Client::new();
         let mut headers = Headers::new();
         headers.set(XDocBaseToken(self.api_key.to_owned()));
-        let mut res = client.get(&format!("https://api.docbase.io/teams/{}/posts?q=group:\"{}\" {}",
-                          self.team,
-                          self.group,
-                          q))
+        let mut res = client
+            .get(&format!(
+                "https://api.docbase.io/teams/{}/posts?q=group:\"{}\" {}",
+                self.team,
+                self.group,
+                q
+            ))
             .headers(headers)
             .send()
             .unwrap();
         let mut buffer = String::new();
         res.read_to_string(&mut buffer).unwrap();
-        let searchResult: PostSearchResult = json::decode(&buffer).unwrap();
-        return searchResult;
+        let search_result: PostSearchResult = serde_json::from_str(&buffer).unwrap();
+        return search_result;
     }
 }

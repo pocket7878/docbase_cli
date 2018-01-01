@@ -4,9 +4,15 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // A copy of the License has been included in the root of the repository.
+extern crate reqwest;
 #[macro_use]
 extern crate hyper;
-extern crate rustc_serialize;
+
+extern crate serde;
+extern crate serde_json;
+
+#[macro_use]
+extern crate serde_derive;
 
 pub mod client;
 pub mod models;
