@@ -6,7 +6,7 @@
 // A copy of the License has been included in the root of the repository.
 use models::post_search_result::PostSearchResult;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct Team {
     pub domain: String,
     pub name: String,

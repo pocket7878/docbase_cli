@@ -9,7 +9,7 @@ use models::group;
 use models::tag;
 use models::comment;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct Post {
     pub id: u32,
     pub title: String,

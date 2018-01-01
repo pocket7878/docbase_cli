@@ -6,15 +6,14 @@
 // A copy of the License has been included in the root of the repository.
 use models::post;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct Meta {
     pub previous_page: Option<String>,
     pub next_page: Option<String>,
     pub total: u32,
 }
 
-
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct PostSearchResult {
     pub posts: Vec<post::Post>,
     pub meta: Meta,
