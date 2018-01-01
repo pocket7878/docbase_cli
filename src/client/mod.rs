@@ -14,7 +14,7 @@ use models::post;
 use client::request_builder::team_request_builder::TeamRequestBuilder;
 use serde_json;
 
-mod request_builder;
+pub mod request_builder;
 
 header! { (XDocBaseToken, "X-DocbaseToken") => [String] }
 
