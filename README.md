@@ -73,3 +73,8 @@ $ docbase-cli --pager "lv"
 
 Default pager is `less`
 
+## Library
+
+And also, provide docbase client library :)
+
+See the documents: [docbase_io Document](https://pocket7878.github.io/docbase_cli/docbase_io/index.html)

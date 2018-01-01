@@ -73,29 +73,21 @@ fn show_choose(items: Vec<(&str, bool)>) -> usize {
 }
 
 fn show_post<F: Fn(Client) -> ()>(client: Client, post: &Post, pager: &str, on_finish: F) {
-    let tmpfile: tempfile::NamedTempFile = tempfile::NamedTempFile::new().unwrap();
-    let mut file: File = OpenOptions::new().write(true).open(tmpfile.path()).unwrap();
-    match file.write_all(post.body.as_bytes()) {
+    let mut tmpfile = tempfile::NamedTempFile::new().unwrap();
+    match tmpfile.write_all(post.body.as_bytes()) {
         Err(why) => {
             panic!("couldn't write to: {}", why);
         }
         Ok(_) => {
-            match tmpfile.path().to_str() {
-                Some(pth) => {
-                    let mut edit = Command::new(pager);
-                    edit.arg(pth);
-                    let status = edit.status().unwrap_or_else(|e| {
-                        panic!("Failed to open view: {}", e);
-                    });
-                    if !status.success() {
-                        panic!("View failed!");
-                    }
-                    on_finish(client);
-                }
-                None => {
-                    panic!("Failed to get temporary file path.");
-                }
+            let mut edit = Command::new(pager);
+            edit.arg(tmpfile.path());
+            let status = edit.status().unwrap_or_else(|e| {
+                panic!("Failed to open view: {}", e);
+            });
+            if !status.success() {
+                panic!("View failed!");
             }
+            on_finish(client);
         }
     }
 }
